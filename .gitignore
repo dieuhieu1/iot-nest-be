@@ -2,5 +2,5 @@ node_modules/
 dist/
 logs/
 .env
-.CLAUDE.md
-.REQUIREMENTS.md
+CLAUDE.md
+REQUIREMENTS.md
