@@ -7,24 +7,21 @@ import { SensorDataService } from './sensor-data.service';
 export class SensorDataController {
   constructor(private readonly sensorDataService: SensorDataService) {}
 
-  @ApiOperation({ summary: 'Query sensor readings with filters' })
+  @ApiOperation({ summary: 'Query sensor readings' })
   @ApiQuery({ name: 'sensorId', required: false, type: Number })
-  @ApiQuery({ name: 'from', required: false, type: String, example: '2026-03-28T00:00:00Z' })
-  @ApiQuery({ name: 'to', required: false, type: String, example: '2026-03-28T23:59:59Z' })
+  @ApiQuery({ name: 'date', required: false, type: String, example: '2026-03-28', description: 'Partial match: "2026-03-28" or "2026-03-28 12:51"' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
   @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @Get()
   async query(
     @Query('sensorId') sensorId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
+    @Query('date') date?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
     return this.sensorDataService.query({
       sensorId: sensorId ? parseInt(sensorId) : undefined,
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
+      date,
       limit: limit ? parseInt(limit) : 50,
       offset: offset ? parseInt(offset) : 0,
     });

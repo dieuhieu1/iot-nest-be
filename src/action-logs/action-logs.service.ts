@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindManyOptions, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ActionLog } from './entities/action-log.entity';
 
 export interface ActionLogQuery {
   deviceId?: number;
   action?: string;
   executionStatus?: string;
-  from?: Date;
-  to?: Date;
+  date?: string;   // e.g. "2026-03-28" or "2026-03-28 12:51"
   limit?: number;
   offset?: number;
 }
@@ -44,23 +43,21 @@ export class ActionLogsService {
   }
 
   async query(params: ActionLogQuery): Promise<{ data: ActionLog[]; meta: object }> {
-    const { deviceId, action, executionStatus, from, to, limit = 50, offset = 0 } = params;
+    const { deviceId, action, executionStatus, date, limit = 50, offset = 0 } = params;
 
-    const where: any = {};
-    if (deviceId !== undefined) where.deviceId = deviceId;
-    if (action) where.action = action;
-    if (executionStatus) where.executionStatus = executionStatus;
-    if (from && to) where.createdAt = Between(from, to);
+    const qb = this.logRepo
+      .createQueryBuilder('al')
+      .leftJoinAndSelect('al.device', 'device')
+      .orderBy('al.createdAt', 'DESC')
+      .take(Math.min(limit, 500))
+      .skip(offset);
 
-    const options: FindManyOptions<ActionLog> = {
-      where,
-      order: { createdAt: 'DESC' },
-      take: Math.min(limit, 500),
-      skip: offset,
-      relations: ['device'],
-    };
+    if (deviceId !== undefined) qb.andWhere('al.deviceId = :deviceId', { deviceId });
+    if (action) qb.andWhere('al.action = :action', { action });
+    if (executionStatus) qb.andWhere('al.executionStatus = :executionStatus', { executionStatus });
+    if (date) qb.andWhere("TO_CHAR(al.createdAt, 'YYYY-MM-DD HH24:MI:SS') LIKE :date", { date: `%${date}%` });
 
-    const [data, total] = await this.logRepo.findAndCount(options);
+    const [data, total] = await qb.getManyAndCount();
     return { data, meta: { total, limit, offset } };
   }
 

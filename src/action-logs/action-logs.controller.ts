@@ -11,8 +11,7 @@ export class ActionLogsController {
   @ApiQuery({ name: 'deviceId', required: false, type: Number })
   @ApiQuery({ name: 'action', required: false, enum: ['ON', 'OFF'] })
   @ApiQuery({ name: 'executionStatus', required: false, enum: ['PROCESSING', 'SUCCESS', 'FAILURE'] })
-  @ApiQuery({ name: 'from', required: false, type: String, example: '2026-03-28T00:00:00Z' })
-  @ApiQuery({ name: 'to', required: false, type: String, example: '2026-03-28T23:59:59Z' })
+  @ApiQuery({ name: 'date', required: false, type: String, example: '2026-03-28', description: 'Partial match: "2026-03-28" or "2026-03-28 12:51"' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
   @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @Get()
@@ -20,8 +19,7 @@ export class ActionLogsController {
     @Query('deviceId') deviceId?: string,
     @Query('action') action?: string,
     @Query('executionStatus') executionStatus?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
+    @Query('date') date?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -29,8 +27,7 @@ export class ActionLogsController {
       deviceId: deviceId ? parseInt(deviceId) : undefined,
       action,
       executionStatus,
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
+      date,
       limit: limit ? parseInt(limit) : 50,
       offset: offset ? parseInt(offset) : 0,
     });

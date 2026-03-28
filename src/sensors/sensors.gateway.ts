@@ -13,7 +13,7 @@ export interface SensorDataPayload {
   unit: string;
   value: number;
   status: string;
-  recordedAt: Date;
+  recordedAt: string;
 }
 
 @WebSocketGateway({

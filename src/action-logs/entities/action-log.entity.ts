@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Device } from '../../devices/entities/device.entity';
+import { dateTransformer } from '../../common/date.transformer';
 
 @Entity('action_logs')
 export class ActionLog {
@@ -29,6 +30,6 @@ export class ActionLog {
   @Column({ nullable: true })
   description: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ transformer: dateTransformer })
+  createdAt: string;
 }

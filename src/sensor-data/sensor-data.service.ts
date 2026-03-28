@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindManyOptions, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { SensorData } from './entities/sensor-data.entity';
 
 export interface SensorDataQuery {
   sensorId?: number;
-  from?: Date;
-  to?: Date;
+  date?: string;   // e.g. "2026-03-28" or "2026-03-28 12:51"
   limit?: number;
   offset?: number;
 }
@@ -28,21 +27,19 @@ export class SensorDataService {
   }
 
   async query(params: SensorDataQuery): Promise<{ data: SensorData[]; total: number }> {
-    const { sensorId, from, to, limit = 50, offset = 0 } = params;
+    const { sensorId, date, limit = 50, offset = 0 } = params;
 
-    const where: any = {};
-    if (sensorId) where.sensorId = sensorId;
-    if (from && to) where.recordedAt = Between(from, to);
+    const qb = this.sensorDataRepo
+      .createQueryBuilder('sd')
+      .leftJoinAndSelect('sd.sensor', 'sensor')
+      .orderBy('sd.recordedAt', 'DESC')
+      .take(Math.min(limit, 500))
+      .skip(offset);
 
-    const options: FindManyOptions<SensorData> = {
-      where,
-      order: { recordedAt: 'DESC' },
-      take: Math.min(limit, 500),
-      skip: offset,
-      relations: ['sensor'],
-    };
+    if (sensorId) qb.andWhere('sd.sensorId = :sensorId', { sensorId });
+    if (date) qb.andWhere("TO_CHAR(sd.recordedAt, 'YYYY-MM-DD HH24:MI:SS') LIKE :date", { date: `%${date}%` });
 
-    const [data, total] = await this.sensorDataRepo.findAndCount(options);
+    const [data, total] = await qb.getManyAndCount();
     return { data, total };
   }
 
