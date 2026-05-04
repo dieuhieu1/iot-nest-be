@@ -7,11 +7,18 @@ import { ActionLogsService } from './action-logs.service';
 export class ActionLogsController {
   constructor(private readonly actionLogsService: ActionLogsService) {}
 
+  @ApiOperation({ summary: 'Get ON/OFF action count statistics per device' })
+  @Get('stats')
+  async getStats() {
+    return this.actionLogsService.getStats();
+  }
+
   @ApiOperation({ summary: 'Query action logs with filters' })
   @ApiQuery({ name: 'deviceId', required: false, type: Number })
   @ApiQuery({ name: 'action', required: false, enum: ['ON', 'OFF'] })
   @ApiQuery({ name: 'executionStatus', required: false, enum: ['PROCESSING', 'SUCCESS', 'FAILURE'] })
   @ApiQuery({ name: 'date', required: false, type: String, example: '2026-03-28', description: 'Partial match: "2026-03-28" or "2026-03-28 12:51"' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], description: 'Sort by createdAt' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
   @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @Get()
@@ -20,6 +27,7 @@ export class ActionLogsController {
     @Query('action') action?: string,
     @Query('executionStatus') executionStatus?: string,
     @Query('date') date?: string,
+    @Query('sortOrder') sortOrder?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -28,6 +36,7 @@ export class ActionLogsController {
       action,
       executionStatus,
       date,
+      sortOrder: (sortOrder === 'ASC' || sortOrder === 'DESC') ? sortOrder : undefined,
       limit: limit ? parseInt(limit) : 50,
       offset: offset ? parseInt(offset) : 0,
     });

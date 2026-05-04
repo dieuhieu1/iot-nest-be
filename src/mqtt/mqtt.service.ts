@@ -3,13 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import * as mqtt from 'mqtt';
 
 type MessageHandler = (topic: string, payload: Buffer) => void;
-const topic: string = "";
 
 @Injectable()
 export class MqttService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MqttService.name);
   private client: mqtt.MqttClient;
-  private handlers: Map<typeof topic, MessageHandler[]> = new Map();
+  private handlers: Map<string, MessageHandler[]> = new Map();
 
   constructor(private configService: ConfigService) {}
 
@@ -42,18 +41,11 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
         });
       }
     });
-
+    // Whenever data pub from MQTT go to this and call the handler have already subcribe
     this.client.on('message', (topic: string, payload: Buffer) => {
       this.logger.debug(`Message on [${topic}]: ${payload.toString()}`);
-      // Exact match
       if (this.handlers.has(topic)) {
         this.handlers.get(topic).forEach((handler) => handler(topic, payload));
-      }
-      // Wildcard match
-      for (const [pattern, handlers] of this.handlers.entries()) {
-        if (pattern !== topic && this.topicMatches(pattern, topic)) {
-          handlers.forEach((h) => h(topic, payload));
-        }
       }
     });
 
@@ -112,16 +104,4 @@ export class MqttService implements OnModuleInit, OnModuleDestroy {
     return this.client?.connected ?? false;
   }
 
-  // MQTT wildcard matching: + = single level, # = multi level
-  private topicMatches(pattern: string, topic: string): boolean {
-    const patternParts = pattern.split('/');
-    const topicParts = topic.split('/');
-
-    for (let i = 0; i < patternParts.length; i++) {
-      if (patternParts[i] === '#') return true;
-      if (patternParts[i] === '+') continue;
-      if (patternParts[i] !== topicParts[i]) return false;
-    }
-    return patternParts.length === topicParts.length;
-  }
 }

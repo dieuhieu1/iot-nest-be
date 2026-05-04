@@ -5,7 +5,11 @@ import { SensorData } from './entities/sensor-data.entity';
 
 export interface SensorDataQuery {
   sensorId?: number;
-  date?: string;   // e.g. "2026-03-28" or "2026-03-28 12:51"
+  sensorName?: string;
+  date?: string; // e.g. "2026-03-28" or "2026-03-28 12:51"
+  value?: number; // exact match
+  sortBy?: 'value' | 'recordedAt';
+  sortOrder?: 'ASC' | 'DESC';
   limit?: number;
   offset?: number;
 }
@@ -27,17 +31,21 @@ export class SensorDataService {
   }
 
   async query(params: SensorDataQuery): Promise<{ data: SensorData[]; total: number }> {
-    const { sensorId, date, limit = 50, offset = 0 } = params;
+    const { sensorId, sensorName, date, value, sortBy = 'recordedAt', sortOrder = 'DESC', limit = 50, offset = 0 } = params;
+
+    const sortColumn = sortBy === 'value' ? 'sd.value' : 'sd.recordedAt';
 
     const qb = this.sensorDataRepo
       .createQueryBuilder('sd')
       .leftJoinAndSelect('sd.sensor', 'sensor')
-      .orderBy('sd.recordedAt', 'DESC')
+      .orderBy(sortColumn, sortOrder)
       .take(Math.min(limit, 500))
       .skip(offset);
 
-    if (sensorId) qb.andWhere('sd.sensorId = :sensorId', { sensorId });
+    if (sensorId)  qb.andWhere('sd.sensorId = :sensorId', { sensorId });
+    if (sensorName) qb.andWhere('sensor.name ILIKE :sensorName', { sensorName: `%${sensorName}%` });
     if (date) qb.andWhere("TO_CHAR(sd.recordedAt, 'YYYY-MM-DD HH24:MI:SS') LIKE :date", { date: `%${date}%` });
+    if (value !== undefined) qb.andWhere('sd.value = :value', { value });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };

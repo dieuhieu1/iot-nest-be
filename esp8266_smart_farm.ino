@@ -7,8 +7,8 @@
  *   - LED_TEMP on pin D5 (GPIO 14) → device:  LED_TEMP_01
  *   - LED_HUM  on pin D6 (GPIO 12) → device:  LED_HUM_01
  *   - LED_LDR  on pin D7 (GPIO 13) → device:  LED_LDR_01
- *   - HEATER   on pin D0 (GPIO 16) → device:  HEATER_01
- *   - MIST     on pin D1 (GPIO 5)  → device:  MIST_01
+ *   - LED_D0   on pin D0 (GPIO 16) → device:  LED_D0_01
+ *   - LED_D1   on pin D1 (GPIO 5)  → device:  LED_D1_01
  *
  * Required libraries (install via Arduino Library Manager):
  *   - PubSubClient  by Nick O'Leary
@@ -22,11 +22,11 @@
 #include <ArduinoJson.h>
 
 // ===== WIFI =====
-const char *WIFI_SSID = "PTIT_WIFI";
-const char *WIFI_PASS = "";
+const char *WIFI_SSID = "Open AI";
+const char *WIFI_PASS = "66668888@";
 
 // ===== MQTT BROKER =====
-const char *MQTT_HOST = "172.11.30.195";
+const char *MQTT_HOST = "192.168.0.103";
 const int MQTT_PORT = 2411;
 const char *MQTT_USER = "dieuchinhhieu";
 const char *MQTT_PASS = "Hieu24112004@";
@@ -43,8 +43,8 @@ const char *TOPIC_INIT_RESPONSE = "device/init/response"; // subscribe — backe
 const char *DEVICE_LED_TEMP = "LED_TEMP_01";
 const char *DEVICE_LED_HUM = "LED_HUM_01";
 const char *DEVICE_LED_LDR = "LED_LDR_01";
-const char *DEVICE_HEATER = "HEATER_01";
-const char *DEVICE_MIST = "MIST_01";
+const char *DEVICE_LED_D0 = "LED_D0_01";
+const char *DEVICE_LED_D1 = "LED_D1_01";
 
 // ===== SENSOR CODES (must match backend DB exactly) =====
 const char *SENSOR_TEMP = "DTH_TEMP_01";
@@ -69,7 +69,6 @@ PubSubClient mqtt(espClient);
 
 // ===== STATE =====
 unsigned long lastSensorPublish = 0;
-bool autoMode = true;
 bool flashMode = false;
 
 // ============================================================
@@ -85,9 +84,9 @@ void setLed(const char *deviceCode, bool on)
     pin = PIN_LED_HUM;
   else if (strcmp(deviceCode, DEVICE_LED_LDR) == 0)
     pin = PIN_LED_LDR;
-  else if (strcmp(deviceCode, DEVICE_HEATER) == 0)
+  else if (strcmp(deviceCode, DEVICE_LED_D0) == 0)
     pin = PIN_LED_D0;
-  else if (strcmp(deviceCode, DEVICE_MIST) == 0)
+  else if (strcmp(deviceCode, DEVICE_LED_D1) == 0)
     pin = PIN_LED_D1;
 
   if (pin != -1)
@@ -167,13 +166,13 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
     {
       setLed(DEVICE_LED_LDR, strcmp(doc[DEVICE_LED_LDR], "ON") == 0);
     }
-    if (doc.containsKey(DEVICE_HEATER))
+    if (doc.containsKey(DEVICE_LED_D0))
     {
-      setLed(DEVICE_HEATER, strcmp(doc[DEVICE_HEATER], "ON") == 0);
+      setLed(DEVICE_LED_D0, strcmp(doc[DEVICE_LED_D0], "ON") == 0);
     }
-    if (doc.containsKey(DEVICE_MIST))
+    if (doc.containsKey(DEVICE_LED_D1))
     {
-      setLed(DEVICE_MIST, strcmp(doc[DEVICE_MIST], "ON") == 0);
+      setLed(DEVICE_LED_D1, strcmp(doc[DEVICE_LED_D1], "ON") == 0);
     }
     Serial.println("│ [OK] LEDs restored from DB state");
     Serial.println("└─────────────────────────────────────────────");
@@ -203,8 +202,8 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
     bool isMine = (strcmp(target, DEVICE_LED_TEMP) == 0 ||
                    strcmp(target, DEVICE_LED_HUM) == 0 ||
                    strcmp(target, DEVICE_LED_LDR) == 0 ||
-                   strcmp(target, DEVICE_HEATER) == 0 ||
-                   strcmp(target, DEVICE_MIST) == 0);
+                   strcmp(target, DEVICE_LED_D0) == 0 ||
+                   strcmp(target, DEVICE_LED_D1) == 0);
 
     if (!isMine)
     {
@@ -213,8 +212,6 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
       return;
     }
 
-    // Switch to manual mode so auto doesn't override the command
-    autoMode = false;
     flashMode = false;
 
     bool turnOn = strcmp(cmd, "ON") == 0;
@@ -233,67 +230,52 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
   // ──────────────────────────────────────────────
   if (topicStr == "device/control")
   {
-    if (message == "mode:auto")
+    if (message == "all_on")
     {
-      autoMode = true;
-      flashMode = false;
-      Serial.println("│ Mode → AUTO");
+      digitalWrite(PIN_LED_TEMP, HIGH);
+      digitalWrite(PIN_LED_HUM, HIGH);
+      digitalWrite(PIN_LED_LDR, HIGH);
     }
-    else if (message == "mode:manual")
+    else if (message == "all_off")
     {
-      autoMode = false;
-      flashMode = false;
-      Serial.println("│ Mode → MANUAL");
+      digitalWrite(PIN_LED_TEMP, LOW);
+      digitalWrite(PIN_LED_HUM, LOW);
+      digitalWrite(PIN_LED_LDR, LOW);
     }
-    else if (!autoMode)
+    else if (message == "flash")
     {
-      if (message == "all_on")
-      {
-        digitalWrite(PIN_LED_TEMP, HIGH);
-        digitalWrite(PIN_LED_HUM, HIGH);
-        digitalWrite(PIN_LED_LDR, HIGH);
-      }
-      else if (message == "all_off")
-      {
-        digitalWrite(PIN_LED_TEMP, LOW);
-        digitalWrite(PIN_LED_HUM, LOW);
-        digitalWrite(PIN_LED_LDR, LOW);
-      }
-      else if (message == "flash")
-      {
-        flashMode = true;
-      }
-      else if (message == "flash_off")
-      {
-        flashMode = false;
-        digitalWrite(PIN_LED_TEMP, LOW);
-        digitalWrite(PIN_LED_HUM, LOW);
-        digitalWrite(PIN_LED_LDR, LOW);
-      }
-      else if (message == "temp_on")
-      {
-        digitalWrite(PIN_LED_TEMP, HIGH);
-      }
-      else if (message == "temp_off")
-      {
-        digitalWrite(PIN_LED_TEMP, LOW);
-      }
-      else if (message == "hum_on")
-      {
-        digitalWrite(PIN_LED_HUM, HIGH);
-      }
-      else if (message == "hum_off")
-      {
-        digitalWrite(PIN_LED_HUM, LOW);
-      }
-      else if (message == "ldr_on")
-      {
-        digitalWrite(PIN_LED_LDR, HIGH);
-      }
-      else if (message == "ldr_off")
-      {
-        digitalWrite(PIN_LED_LDR, LOW);
-      }
+      flashMode = true;
+    }
+    else if (message == "flash_off")
+    {
+      flashMode = false;
+      digitalWrite(PIN_LED_TEMP, LOW);
+      digitalWrite(PIN_LED_HUM, LOW);
+      digitalWrite(PIN_LED_LDR, LOW);
+    }
+    else if (message == "temp_on")
+    {
+      digitalWrite(PIN_LED_TEMP, HIGH);
+    }
+    else if (message == "temp_off")
+    {
+      digitalWrite(PIN_LED_TEMP, LOW);
+    }
+    else if (message == "hum_on")
+    {
+      digitalWrite(PIN_LED_HUM, HIGH);
+    }
+    else if (message == "hum_off")
+    {
+      digitalWrite(PIN_LED_HUM, LOW);
+    }
+    else if (message == "ldr_on")
+    {
+      digitalWrite(PIN_LED_LDR, HIGH);
+    }
+    else if (message == "ldr_off")
+    {
+      digitalWrite(PIN_LED_LDR, LOW);
     }
   }
 
@@ -323,7 +305,7 @@ void mqttReconnect()
 
       // Request last known device states from backend DB
       // Backend will respond on device/init/response
-      String initReq = "{\"devices\":[\"" + String(DEVICE_LED_TEMP) + "\",\"" + String(DEVICE_LED_HUM) + "\",\"" + String(DEVICE_LED_LDR) + "\",\"" + String(DEVICE_HEATER) + "\",\"" + String(DEVICE_MIST) + "\"]}";
+      String initReq = "{\"devices\":[\"" + String(DEVICE_LED_TEMP) + "\",\"" + String(DEVICE_LED_HUM) + "\",\"" + String(DEVICE_LED_LDR) + "\",\"" + String(DEVICE_LED_D0) + "\",\"" + String(DEVICE_LED_D1) + "\"]}";
       mqtt.publish(TOPIC_INIT_REQUEST, initReq.c_str());
       Serial.println("[MQTT] Init request sent: " + initReq);
     }
@@ -403,16 +385,8 @@ void loop()
       return;
     }
 
-    // ── AUTO MODE: control LEDs based on thresholds ──────────
-    if (autoMode)
-    {
-      digitalWrite(PIN_LED_LDR, lux < 512 ? HIGH : LOW);
-      digitalWrite(PIN_LED_HUM, h > 70 ? HIGH : LOW);
-      digitalWrite(PIN_LED_TEMP, t > 27 ? HIGH : LOW);
-    }
-
     // ── FLASH MODE ────────────────────────────────────────────
-    if (flashMode && !autoMode)
+    if (flashMode)
     {
       digitalWrite(PIN_LED_TEMP, HIGH);
       digitalWrite(PIN_LED_HUM, LOW);
@@ -442,7 +416,7 @@ void loop()
     Serial.printf("│ Temp : %.1f °C  → %s\n", t, SENSOR_TEMP);
     Serial.printf("│ Hum  : %.1f %%  → %s\n", h, SENSOR_HUM);
     Serial.printf("│ Light: %d Lux (%s) → %s\n", lux, lightLevel.c_str(), SENSOR_LDR);
-    Serial.printf("│ Mode : %s\n", autoMode ? "AUTO" : (flashMode ? "FLASH" : "MANUAL"));
+    Serial.printf("│ Mode : %s\n", flashMode ? "FLASH" : "MANUAL");
     Serial.println("└─────────────────────────────────────────────");
   }
 }

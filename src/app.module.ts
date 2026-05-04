@@ -18,7 +18,6 @@ import { Sensor } from './sensors/entities/sensor.entity';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     WinstonModule.forRoot(winstonConfig),
-
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -33,7 +32,6 @@ import { Sensor } from './sensors/entities/sensor.entity';
         logging: ['error'],
       }),
     }),
-
     MqttModule,
     ActionLogsModule,
     DevicesModule,

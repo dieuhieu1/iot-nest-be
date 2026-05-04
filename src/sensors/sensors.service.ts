@@ -26,7 +26,7 @@ export class SensorsService implements OnModuleInit {
 
   onModuleInit() {
     this.mqttService.unsubscribe(this.sensorTopic);
-
+    // Assign Handler to the Topic key
     this.mqttService.subscribe(this.sensorTopic, async (topic, payload) => {
       try {
         const raw = payload.toString();
